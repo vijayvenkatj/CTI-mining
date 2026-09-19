@@ -56,6 +56,10 @@ func (eg *EdgeGenerator) GenerateEdges(ctx context.Context) error {
 			// Unique pulses -> make edges -> publish unique to writer
 			pulses := eg.IndicatorIndex.Get(key)
 			for _, target := range pulses {
+				if target == pulse.ID {
+					continue
+				}
+
 				edge := resources.MakeEdge(pulse.ID, target)
 				if eg.Bloom.Contains(edge.String()) {
 					continue
