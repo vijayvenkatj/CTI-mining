@@ -8,5 +8,8 @@
     "writer": {
       "topic": "cti-edges"
     }
+  },
+  "otx": {
+    "api_key": "your-otx-api-key"
   }
 }
