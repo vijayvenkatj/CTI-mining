@@ -8,11 +8,16 @@ memory-efficient membership testing and frequency estimation.
 ## Structure
 
 ```
+cmd/
+  ingestion/        Polls OTX and publishes pulses to Kafka
+  edge-generation/  Consumes pulses, publishes co-occurrence edges
 pkg/
   algorithms/   Bloom filter, Count-Min Sketch
-  commons/      Kafka reader
+  commons/      Kafka reader/writer, HTTP client
   config/       Viper-based configuration loader
-  resources/    CTI domain types (Pulse, Indicator)
+  edge-gen/     Edge generation pipeline
+  otx/          AlienVault OTX client and poller
+  resources/    CTI domain types (Pulse, Indicator, Edge)
 ```
 
 ## Configuration
@@ -27,8 +32,16 @@ cp config.json.example config.json
 {
   "kafka": {
     "brokers": ["localhost:9092"],
-    "topic": "cti-events",
-    "group_id": "cti-miner"
+    "reader": {
+      "topic": "cti-pulses",
+      "group_id": "cti-miner"
+    },
+    "writer": {
+      "topic": "cti-edges"
+    }
+  },
+  "otx": {
+    "api_key": "your-otx-api-key"
   }
 }
 ```
@@ -36,7 +49,8 @@ cp config.json.example config.json
 ## Usage
 
 ```bash
-go run main.go
+go run ./cmd/ingestion
+go run ./cmd/edge-generation
 ```
 
 ## Status
