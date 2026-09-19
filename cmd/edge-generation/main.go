@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/vijayvenkatj/cti-miner/pkg/algorithms"
 	"github.com/vijayvenkatj/cti-miner/pkg/commons"
@@ -17,10 +19,19 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	reader := commons.NewKafkaReader(cfg.Kafka.Brokers, cfg.Kafka.Reader.Topic, cfg.Kafka.Reader.GroupID)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	reader, err := commons.NewKafkaReader(ctx, cfg.Kafka.Brokers, cfg.Kafka.Reader.Topic, cfg.Kafka.Reader.GroupID)
+	if err != nil {
+		log.Fatalf("kafka reader: %v", err)
+	}
 	defer reader.Close()
 
-	writer := commons.NewKafkaWriter(cfg.Kafka.Brokers, cfg.Kafka.Writer.Topic)
+	writer, err := commons.NewKafkaWriter(ctx, cfg.Kafka.Brokers, cfg.Kafka.Writer.Topic)
+	if err != nil {
+		log.Fatalf("kafka writer: %v", err)
+	}
 	defer writer.Close()
 
 	bloom := algorithms.NewBloomFilter(1<<16, 4)
@@ -29,7 +40,7 @@ func main() {
 
 	eg := edgegen.NewEdgeGenerator(bloom, cms, index, 1000, reader, writer)
 
-	if err := eg.GenerateEdges(context.Background()); err != nil {
+	if err := eg.GenerateEdges(ctx); err != nil {
 		log.Fatalf("generate edges: %v", err)
 	}
 }
