@@ -1,7 +1,12 @@
 {
   "kafka": {
     "brokers": ["localhost:9092"],
-    "topic": "cti-events",
-    "group_id": "cti-miner"
+    "reader": {
+      "topic": "cti-pulses",
+      "group_id": "cti-miner"
+    },
+    "writer": {
+      "topic": "cti-edges"
+    }
   }
 }
