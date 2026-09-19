@@ -1,0 +1,7 @@
+{
+  "kafka": {
+    "brokers": ["localhost:9092"],
+    "topic": "cti-events",
+    "group_id": "cti-miner"
+  }
+}
