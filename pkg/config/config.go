@@ -1,6 +1,10 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"time"
+
+	"github.com/spf13/viper"
+)
 
 type KafkaConfig struct {
 	Brokers []string     `mapstructure:"brokers"`
@@ -17,13 +21,28 @@ type WriterConfig struct {
 	Topic string `mapstructure:"topic"`
 }
 
+type OTXConfig struct {
+	APIKey        string `mapstructure:"api_key"`
+	BaseURL       string `mapstructure:"base_url"`
+	ModifiedSince string `mapstructure:"modified_since"`
+
+	InitialBackoff time.Duration `mapstructure:"initial_backoff"`
+	MaxBackoff     time.Duration `mapstructure:"max_backoff"`
+}
+
 type Config struct {
 	Kafka KafkaConfig `mapstructure:"kafka"`
+	OTX   OTXConfig   `mapstructure:"otx"`
 }
 
 func Load(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
+
+	v.SetDefault("otx.base_url", "https://otx.alienvault.com/api/v1/pulses/subscribed")
+	v.SetDefault("otx.modified_since", "2026-09-01T00:00:00Z")
+	v.SetDefault("otx.initial_backoff", time.Second)
+	v.SetDefault("otx.max_backoff", time.Hour)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
