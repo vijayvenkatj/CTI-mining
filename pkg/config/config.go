@@ -1,0 +1,28 @@
+package config
+
+import "github.com/spf13/viper"
+
+type KafkaConfig struct {
+	Brokers []string `mapstructure:"brokers"`
+	Topic   string   `mapstructure:"topic"`
+	GroupID string   `mapstructure:"group_id"`
+}
+
+type Config struct {
+	Kafka KafkaConfig `mapstructure:"kafka"`
+}
+
+func Load(path string) (*Config, error) {
+	v := viper.New()
+	v.SetConfigFile(path)
+
+	if err := v.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
