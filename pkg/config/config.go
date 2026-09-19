@@ -3,9 +3,18 @@ package config
 import "github.com/spf13/viper"
 
 type KafkaConfig struct {
-	Brokers []string `mapstructure:"brokers"`
-	Topic   string   `mapstructure:"topic"`
-	GroupID string   `mapstructure:"group_id"`
+	Brokers []string     `mapstructure:"brokers"`
+	Reader  ReaderConfig `mapstructure:"reader"`
+	Writer  WriterConfig `mapstructure:"writer"`
+}
+
+type ReaderConfig struct {
+	Topic   string `mapstructure:"topic"`
+	GroupID string `mapstructure:"group_id"`
+}
+
+type WriterConfig struct {
+	Topic string `mapstructure:"topic"`
 }
 
 type Config struct {

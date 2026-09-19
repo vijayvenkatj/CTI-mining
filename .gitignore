@@ -1,0 +1,12 @@
+# Binaries
+/cti-miner
+*.exe
+*.test
+
+# Local config (see config.json.example)
+config.json
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/
