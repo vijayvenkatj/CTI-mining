@@ -30,6 +30,10 @@ type PostgresConfig struct {
 	DSN string `mapstructure:"dsn"`
 }
 
+type ServerConfig struct {
+	Addr string `mapstructure:"addr"`
+}
+
 type OTXConfig struct {
 	APIKey        string `mapstructure:"api_key"`
 	BaseURL       string `mapstructure:"base_url"`
@@ -43,6 +47,7 @@ type Config struct {
 	Kafka    KafkaConfig     `mapstructure:"kafka"`
 	OTX      OTXConfig       `mapstructure:"otx"`
 	Postgres *PostgresConfig `mapstructure:"postgres"`
+	Server   ServerConfig    `mapstructure:"server"`
 }
 
 func Load(path string) (*Config, error) {
@@ -53,6 +58,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("otx.modified_since", "2026-09-01T00:00:00Z")
 	v.SetDefault("otx.initial_backoff", time.Second)
 	v.SetDefault("otx.max_backoff", time.Hour)
+	v.SetDefault("server.addr", ":8080")
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
