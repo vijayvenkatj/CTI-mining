@@ -22,6 +22,10 @@ type OTXResponse struct {
 	Next     *string           `json:"next"`
 }
 
+type PulseStore interface {
+	SavePulse(ctx context.Context, pulse resources.Pulse) error
+}
+
 type Poller struct {
 	BaseURL       string
 	ModifiedSince time.Time
@@ -31,6 +35,7 @@ type Poller struct {
 
 	Client    *Client
 	Publisher *commons.KafkaWriter
+	Store     PulseStore
 }
 
 func NewPoller(baseURL string, modifiedSince time.Time, initialBackoff, maxBackoff time.Duration, client *Client, publisher *commons.KafkaWriter) *Poller {
@@ -107,6 +112,12 @@ func (p *Poller) Poll(ctx context.Context) error {
 			}
 			if pubErr := p.Publisher.WriteMessage(ctx, []byte(result.ID), value); pubErr != nil {
 				log.Println("error publishing result", result.ID, pubErr)
+			}
+
+			if p.Store != nil {
+				if storeErr := p.Store.SavePulse(ctx, result); storeErr != nil {
+					log.Println("error storing pulse", result.ID, storeErr)
+				}
 			}
 		}
 

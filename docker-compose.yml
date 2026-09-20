@@ -49,5 +49,29 @@ services:
     networks:
       - platform
 
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: cti
+      POSTGRES_PASSWORD: cti
+      POSTGRES_DB: ctiminer
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/0001_init.up.sql:/docker-entrypoint-initdb.d/0001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cti -d ctiminer"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - platform
+
 networks:
   platform:
+
+volumes:
+  postgres_data:
