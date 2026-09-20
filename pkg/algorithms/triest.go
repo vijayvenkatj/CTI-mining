@@ -27,6 +27,8 @@ func NewTreist(m int) *Triest {
 }
 
 func (t *Triest) Insert(e resources.Edge) {
+	t.T++
+
 	if t.M >= len(t.Edges) {
 		t.tau += t.triangles(e)
 		t.addEdge(e)

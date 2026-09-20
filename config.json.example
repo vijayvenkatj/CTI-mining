@@ -9,6 +9,12 @@
       "writer": {
         "topic": "cti-edges"
       }
+    },
+    "estimator": {
+      "reader": {
+        "topic": "cti-edges",
+        "group_id": "cti-miner-estimator"
+      }
     }
   },
   "otx": {
