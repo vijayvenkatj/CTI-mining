@@ -3,6 +3,7 @@ package resources
 import "fmt"
 
 type Edge struct {
+	ID     int64 `json:"id,omitempty"`
 	Source string
 	Target string
 }

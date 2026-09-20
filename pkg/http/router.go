@@ -10,12 +10,14 @@ type Store interface {
 	controllers.EdgeStore
 	controllers.PulseStore
 	controllers.IndicatorStore
+	controllers.StatsStore
 }
 
 func NewRouter(store Store) http.Handler {
 	edges := controllers.NewEdgeController(store)
 	pulses := controllers.NewPulseController(store)
 	indicators := controllers.NewIndicatorController(store)
+	stats := controllers.NewStatsController(store)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /edges", edges.List)
@@ -23,6 +25,7 @@ func NewRouter(store Store) http.Handler {
 	mux.HandleFunc("GET /pulses/{id}", pulses.Get)
 	mux.HandleFunc("GET /indicators", indicators.List)
 	mux.HandleFunc("GET /indicators/{id}", indicators.Get)
+	mux.HandleFunc("GET /stats", stats.Get)
 	return withCORS(mux)
 }
 

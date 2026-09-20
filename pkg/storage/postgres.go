@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 
 	sq "github.com/Masterminds/squirrel"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -124,11 +125,13 @@ func (p *Postgres) LoadIngestionState(ctx context.Context, key string) (string, 
 	return value, true, nil
 }
 
-func (p *Postgres) ListEdges(ctx context.Context) ([]resources.Edge, error) {
-	rows, err := p.qb.Select("source_pulse_id", "target_pulse_id").
-		From("edges").
-		RunWith(p.db).
-		QueryContext(ctx)
+func (p *Postgres) ListEdges(ctx context.Context, afterID int64) ([]resources.Edge, error) {
+	q := p.qb.Select("id", "source_pulse_id", "target_pulse_id").From("edges").OrderBy("id ASC")
+	if afterID > 0 {
+		q = q.Where(sq.Gt{"id": afterID})
+	}
+
+	rows, err := q.RunWith(p.db).QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +140,7 @@ func (p *Postgres) ListEdges(ctx context.Context) ([]resources.Edge, error) {
 	edges := []resources.Edge{}
 	for rows.Next() {
 		var edge resources.Edge
-		if err := rows.Scan(&edge.Source, &edge.Target); err != nil {
+		if err := rows.Scan(&edge.ID, &edge.Source, &edge.Target); err != nil {
 			return nil, err
 		}
 		edges = append(edges, edge)
@@ -164,8 +167,16 @@ func (p *Postgres) GetPulse(ctx context.Context, id string) (resources.Pulse, er
 	return pulse, nil
 }
 
-func (p *Postgres) ListPulses(ctx context.Context) ([]resources.Pulse, error) {
-	rows, err := p.qb.Select(pulseColumns...).From("pulses").RunWith(p.db).QueryContext(ctx)
+func (p *Postgres) ListPulses(ctx context.Context, modifiedSince string, ids []string) ([]resources.Pulse, error) {
+	q := p.qb.Select(pulseColumns...).From("pulses").OrderBy("modified ASC")
+	switch {
+	case len(ids) > 0:
+		q = q.Where(sq.Eq{"id": ids})
+	case modifiedSince != "":
+		q = q.Where(sq.Gt{"modified": modifiedSince})
+	}
+
+	rows, err := q.RunWith(p.db).QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +221,63 @@ func (p *Postgres) ListIndicators(ctx context.Context) ([]resources.Indicator, e
 		indicators = append(indicators, indicator)
 	}
 	return indicators, rows.Err()
+}
+
+func (p *Postgres) GetStats(ctx context.Context) (resources.Stats, error) {
+	stats := resources.Stats{
+		PulsesByTLP:      map[string]int{},
+		IndicatorsByType: map[string]int{},
+	}
+
+	tlpRows, err := p.qb.Select("tlp", "count(*)").From("pulses").GroupBy("tlp").RunWith(p.db).QueryContext(ctx)
+	if err != nil {
+		return stats, err
+	}
+	defer tlpRows.Close()
+	for tlpRows.Next() {
+		var tlp string
+		var count int
+		if err := tlpRows.Scan(&tlp, &count); err != nil {
+			return stats, err
+		}
+		stats.PulsesByTLP[tlp] = count
+		stats.TotalPulses += count
+	}
+	if err := tlpRows.Err(); err != nil {
+		return stats, err
+	}
+
+	typeRows, err := p.qb.Select("type", "count(*)").From("indicators").GroupBy("type").RunWith(p.db).QueryContext(ctx)
+	if err != nil {
+		return stats, err
+	}
+	defer typeRows.Close()
+	for typeRows.Next() {
+		var indicatorType string
+		var count int
+		if err := typeRows.Scan(&indicatorType, &count); err != nil {
+			return stats, err
+		}
+		stats.IndicatorsByType[indicatorType] = count
+		stats.TotalIndicators += count
+	}
+	if err := typeRows.Err(); err != nil {
+		return stats, err
+	}
+
+	if err := p.qb.Select("count(*)").From("edges").RunWith(p.db).QueryRowContext(ctx).Scan(&stats.TotalEdges); err != nil {
+		return stats, err
+	}
+
+	if value, ok, err := p.LoadIngestionState(ctx, "triangle_estimate"); err != nil {
+		return stats, err
+	} else if ok {
+		if n, err := strconv.Atoi(value); err == nil {
+			stats.TriangleEstimate = n
+		}
+	}
+
+	return stats, nil
 }
 
 func (p *Postgres) PulseIndicators(ctx context.Context, pulseID string) ([]resources.Indicator, error) {

@@ -4,14 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strconv"
 
 	"github.com/vijayvenkatj/cti-miner/pkg/algorithms"
 	"github.com/vijayvenkatj/cti-miner/pkg/commons"
 	"github.com/vijayvenkatj/cti-miner/pkg/resources"
 )
 
+const triangleEstimateStateKey = "triangle_estimate"
+
 type EdgeStore interface {
 	SaveEdge(ctx context.Context, edge resources.Edge) error
+	SaveIngestionState(ctx context.Context, key, value string) error
 }
 
 type Estimator struct {
@@ -40,11 +44,15 @@ func (e *Estimator) Run(ctx context.Context) error {
 		}
 
 		e.Triest.Insert(edge)
-		log.Println("triangles:", e.Triest.Estimate())
+		estimate := e.Triest.Estimate()
+		log.Println("triangles:", estimate)
 
 		if e.Store != nil {
 			if err := e.Store.SaveEdge(ctx, edge); err != nil {
 				log.Println("error storing edge", edge.String(), err)
+			}
+			if err := e.Store.SaveIngestionState(ctx, triangleEstimateStateKey, strconv.Itoa(estimate)); err != nil {
+				log.Println("error storing triangle estimate", err)
 			}
 		}
 	}

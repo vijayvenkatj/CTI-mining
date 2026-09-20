@@ -3,12 +3,13 @@ package controllers
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/vijayvenkatj/cti-miner/pkg/resources"
 )
 
 type EdgeStore interface {
-	ListEdges(ctx context.Context) ([]resources.Edge, error)
+	ListEdges(ctx context.Context, afterID int64) ([]resources.Edge, error)
 }
 
 type EdgeController struct {
@@ -20,7 +21,9 @@ func NewEdgeController(store EdgeStore) *EdgeController {
 }
 
 func (c *EdgeController) List(w http.ResponseWriter, r *http.Request) {
-	edges, err := c.store.ListEdges(r.Context())
+	afterID, _ := strconv.ParseInt(r.URL.Query().Get("after_id"), 10, 64)
+
+	edges, err := c.store.ListEdges(r.Context(), afterID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

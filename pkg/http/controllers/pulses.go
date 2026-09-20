@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/vijayvenkatj/cti-miner/pkg/resources"
 	"github.com/vijayvenkatj/cti-miner/pkg/storage"
@@ -11,7 +12,7 @@ import (
 
 type PulseStore interface {
 	GetPulse(ctx context.Context, id string) (resources.Pulse, error)
-	ListPulses(ctx context.Context) ([]resources.Pulse, error)
+	ListPulses(ctx context.Context, modifiedSince string, ids []string) ([]resources.Pulse, error)
 	PulseIndicators(ctx context.Context, pulseID string) ([]resources.Indicator, error)
 }
 
@@ -37,7 +38,13 @@ func (c *PulseController) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *PulseController) List(w http.ResponseWriter, r *http.Request) {
-	pulses, err := c.store.ListPulses(r.Context())
+	var ids []string
+	if raw := r.URL.Query().Get("ids"); raw != "" {
+		ids = strings.Split(raw, ",")
+	}
+	modifiedSince := r.URL.Query().Get("modified_since")
+
+	pulses, err := c.store.ListPulses(r.Context(), modifiedSince, ids)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
