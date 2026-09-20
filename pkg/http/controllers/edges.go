@@ -25,5 +25,13 @@ func (c *EdgeController) List(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, edges)
+
+	if pulseID := r.URL.Query().Get("pulse_id"); pulseID != "" {
+		edges = resources.Filter(edges, func(e resources.Edge) bool {
+			return e.Source == pulseID || e.Target == pulseID
+		})
+	}
+
+	page, limit := parsePage(r)
+	writeJSON(w, http.StatusOK, resources.Paginate(edges, page, limit))
 }

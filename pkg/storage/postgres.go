@@ -13,6 +13,23 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+var (
+	pulseColumns     = []string{"id", "name", "description", "author_name", "modified", "created", "revision", "tlp", "public", "adversary"}
+	indicatorColumns = []string{"id", "pulse_id", "indicator", "type", "created", "title", "is_active"}
+)
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanPulse(s scanner, pulse *resources.Pulse) error {
+	return s.Scan(&pulse.ID, &pulse.Name, &pulse.Description, &pulse.AuthorName, &pulse.Modified, &pulse.Created, &pulse.Revision, &pulse.TLP, &pulse.Public, &pulse.Adversary)
+}
+
+func scanIndicator(s scanner, indicator *resources.Indicator) error {
+	return s.Scan(&indicator.ID, &indicator.PulseID, &indicator.Indicator, &indicator.Type, &indicator.Created, &indicator.Title, &indicator.IsActive)
+}
+
 type Postgres struct {
 	db *sql.DB
 	qb sq.StatementBuilderType
@@ -130,53 +147,85 @@ func (p *Postgres) ListEdges(ctx context.Context) ([]resources.Edge, error) {
 
 func (p *Postgres) GetPulse(ctx context.Context, id string) (resources.Pulse, error) {
 	var pulse resources.Pulse
-	err := p.qb.Select("id", "name", "description", "author_name", "modified", "created", "revision", "tlp", "public", "adversary").
-		From("pulses").
-		Where(sq.Eq{"id": id}).
-		RunWith(p.db).
-		QueryRowContext(ctx).
-		Scan(&pulse.ID, &pulse.Name, &pulse.Description, &pulse.AuthorName, &pulse.Modified, &pulse.Created, &pulse.Revision, &pulse.TLP, &pulse.Public, &pulse.Adversary)
-	if err == sql.ErrNoRows {
-		return resources.Pulse{}, ErrNotFound
-	}
-	if err != nil {
-		return resources.Pulse{}, err
-	}
-
-	rows, err := p.qb.Select("id", "pulse_id", "indicator", "type", "created", "title", "is_active").
-		From("indicators").
-		Where(sq.Eq{"pulse_id": id}).
-		RunWith(p.db).
-		QueryContext(ctx)
-	if err != nil {
-		return resources.Pulse{}, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var indicator resources.Indicator
-		if err := rows.Scan(&indicator.ID, &indicator.PulseID, &indicator.Indicator, &indicator.Type, &indicator.Created, &indicator.Title, &indicator.IsActive); err != nil {
-			return resources.Pulse{}, err
+	row := p.qb.Select(pulseColumns...).From("pulses").Where(sq.Eq{"id": id}).RunWith(p.db).QueryRowContext(ctx)
+	if err := scanPulse(row, &pulse); err != nil {
+		if err == sql.ErrNoRows {
+			return resources.Pulse{}, ErrNotFound
 		}
-		pulse.Indicators = append(pulse.Indicators, indicator)
-	}
-	if err := rows.Err(); err != nil {
 		return resources.Pulse{}, err
 	}
+
+	indicators, err := p.PulseIndicators(ctx, id)
+	if err != nil {
+		return resources.Pulse{}, err
+	}
+	pulse.Indicators = indicators
 
 	return pulse, nil
 }
 
+func (p *Postgres) ListPulses(ctx context.Context) ([]resources.Pulse, error) {
+	rows, err := p.qb.Select(pulseColumns...).From("pulses").RunWith(p.db).QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	pulses := []resources.Pulse{}
+	for rows.Next() {
+		var pulse resources.Pulse
+		if err := scanPulse(rows, &pulse); err != nil {
+			return nil, err
+		}
+		pulses = append(pulses, pulse)
+	}
+	return pulses, rows.Err()
+}
+
 func (p *Postgres) GetIndicator(ctx context.Context, id int64) (resources.Indicator, error) {
 	var indicator resources.Indicator
-	err := p.qb.Select("id", "pulse_id", "indicator", "type", "created", "title", "is_active").
-		From("indicators").
-		Where(sq.Eq{"id": id}).
-		RunWith(p.db).
-		QueryRowContext(ctx).
-		Scan(&indicator.ID, &indicator.PulseID, &indicator.Indicator, &indicator.Type, &indicator.Created, &indicator.Title, &indicator.IsActive)
-	if err == sql.ErrNoRows {
-		return resources.Indicator{}, ErrNotFound
+	row := p.qb.Select(indicatorColumns...).From("indicators").Where(sq.Eq{"id": id}).RunWith(p.db).QueryRowContext(ctx)
+	if err := scanIndicator(row, &indicator); err != nil {
+		if err == sql.ErrNoRows {
+			return resources.Indicator{}, ErrNotFound
+		}
+		return resources.Indicator{}, err
 	}
-	return indicator, err
+	return indicator, nil
+}
+
+func (p *Postgres) ListIndicators(ctx context.Context) ([]resources.Indicator, error) {
+	rows, err := p.qb.Select(indicatorColumns...).From("indicators").RunWith(p.db).QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	indicators := []resources.Indicator{}
+	for rows.Next() {
+		var indicator resources.Indicator
+		if err := scanIndicator(rows, &indicator); err != nil {
+			return nil, err
+		}
+		indicators = append(indicators, indicator)
+	}
+	return indicators, rows.Err()
+}
+
+func (p *Postgres) PulseIndicators(ctx context.Context, pulseID string) ([]resources.Indicator, error) {
+	rows, err := p.qb.Select(indicatorColumns...).From("indicators").Where(sq.Eq{"pulse_id": pulseID}).RunWith(p.db).QueryContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	indicators := []resources.Indicator{}
+	for rows.Next() {
+		var indicator resources.Indicator
+		if err := scanIndicator(rows, &indicator); err != nil {
+			return nil, err
+		}
+		indicators = append(indicators, indicator)
+	}
+	return indicators, rows.Err()
 }

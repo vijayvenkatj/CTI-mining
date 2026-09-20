@@ -11,6 +11,8 @@ import (
 
 type PulseStore interface {
 	GetPulse(ctx context.Context, id string) (resources.Pulse, error)
+	ListPulses(ctx context.Context) ([]resources.Pulse, error)
+	PulseIndicators(ctx context.Context, pulseID string) ([]resources.Indicator, error)
 }
 
 type PulseController struct {
@@ -32,4 +34,28 @@ func (c *PulseController) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, pulse)
+}
+
+func (c *PulseController) List(w http.ResponseWriter, r *http.Request) {
+	pulses, err := c.store.ListPulses(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	page, limit := parsePage(r)
+	result := resources.Paginate(pulses, page, limit)
+
+	if r.URL.Query().Get("include_indicators") == "true" {
+		for i := range result.Items {
+			indicators, err := c.store.PulseIndicators(r.Context(), result.Items[i].ID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			result.Items[i].Indicators = indicators
+		}
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }

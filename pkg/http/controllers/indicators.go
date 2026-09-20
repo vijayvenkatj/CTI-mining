@@ -12,6 +12,7 @@ import (
 
 type IndicatorStore interface {
 	GetIndicator(ctx context.Context, id int64) (resources.Indicator, error)
+	ListIndicators(ctx context.Context) ([]resources.Indicator, error)
 }
 
 type IndicatorController struct {
@@ -39,4 +40,21 @@ func (c *IndicatorController) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, indicator)
+}
+
+func (c *IndicatorController) List(w http.ResponseWriter, r *http.Request) {
+	indicators, err := c.store.ListIndicators(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if indicatorType := r.URL.Query().Get("type"); indicatorType != "" {
+		indicators = resources.Filter(indicators, func(indicator resources.Indicator) bool {
+			return indicator.Type == indicatorType
+		})
+	}
+
+	page, limit := parsePage(r)
+	writeJSON(w, http.StatusOK, resources.Paginate(indicators, page, limit))
 }

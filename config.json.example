@@ -22,5 +22,8 @@
   },
   "postgres": {
     "dsn": "postgres://cti:cti@localhost:5433/ctiminer?sslmode=disable"
+  },
+  "server": {
+    "addr": ":8080"
   }
 }

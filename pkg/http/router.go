@@ -19,7 +19,9 @@ func NewRouter(store Store) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /edges", edges.List)
+	mux.HandleFunc("GET /pulses", pulses.List)
 	mux.HandleFunc("GET /pulses/{id}", pulses.Get)
+	mux.HandleFunc("GET /indicators", indicators.List)
 	mux.HandleFunc("GET /indicators/{id}", indicators.Get)
 	return mux
 }
