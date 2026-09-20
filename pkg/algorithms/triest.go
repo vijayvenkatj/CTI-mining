@@ -29,14 +29,14 @@ func NewTreist(m int) *Triest {
 func (t *Triest) Insert(e resources.Edge) {
 	t.T++
 
-	if t.M >= len(t.Edges) {
+	if len(t.Edges) < t.M {
 		t.tau += t.triangles(e)
 		t.addEdge(e)
 		return
 	}
 
 	// There is M/T chance of an edge being selected
-	if rand.Float64() < float64(t.M)/float64(t.T) {
+	if rand.Float64() >= float64(t.M)/float64(t.T) {
 		return
 	}
 
@@ -51,15 +51,15 @@ func (t *Triest) Insert(e resources.Edge) {
 }
 
 func (t *Triest) Estimate() int {
-	if t.M >= len(t.Edges) {
+	if t.T <= t.M {
 		return t.tau
 	}
 
-	T := t.T
-	M := t.M
+	T := float64(t.T)
+	M := float64(t.M)
 	factor := (T * (T - 1) * (T - 2)) / (M * (M - 1) * (M - 2))
 
-	return factor * t.tau
+	return int(factor * float64(t.tau))
 }
 
 func (t *Triest) triangles(e resources.Edge) int {

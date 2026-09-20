@@ -31,7 +31,7 @@ func main() {
 	}
 	defer reader.Close()
 
-	triest := algorithms.NewTreist(10000)
+	triest := algorithms.NewTreist(10)
 
 	est := estimator.NewEstimator(triest, reader)
 

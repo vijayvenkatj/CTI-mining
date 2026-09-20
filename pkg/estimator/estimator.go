@@ -3,6 +3,7 @@ package estimator
 import (
 	"context"
 	"encoding/json"
+	"log"
 
 	"github.com/vijayvenkatj/cti-miner/pkg/algorithms"
 	"github.com/vijayvenkatj/cti-miner/pkg/commons"
@@ -34,5 +35,6 @@ func (e *Estimator) Run(ctx context.Context) error {
 		}
 
 		e.Triest.Insert(edge)
+		log.Println("triangles:", e.Triest.Estimate())
 	}
 }
