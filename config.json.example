@@ -1,12 +1,14 @@
 {
   "kafka": {
     "brokers": ["localhost:9092"],
-    "reader": {
-      "topic": "cti-pulses",
-      "group_id": "cti-miner"
-    },
-    "writer": {
-      "topic": "cti-edges"
+    "edge_generator": {
+      "reader": {
+        "topic": "cti-pulses",
+        "group_id": "cti-miner"
+      },
+      "writer": {
+        "topic": "cti-edges"
+      }
     }
   },
   "otx": {

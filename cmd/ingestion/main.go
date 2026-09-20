@@ -27,8 +27,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Publishes pulses to the same topic edge-generation reads from.
-	writer, err := commons.NewKafkaWriter(ctx, cfg.Kafka.Brokers, cfg.Kafka.Reader.Topic)
+	rc := cfg.Kafka.EdgeGenerator.Reader
+	if rc == nil {
+		log.Fatal("kafka.edge_generator.reader is not configured")
+	}
+	writer, err := commons.NewKafkaWriter(ctx, cfg.Kafka.Brokers, rc.Topic)
 	if err != nil {
 		log.Fatalf("kafka writer: %v", err)
 	}

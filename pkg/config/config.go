@@ -6,12 +6,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type KafkaConfig struct {
-	Brokers []string     `mapstructure:"brokers"`
-	Reader  ReaderConfig `mapstructure:"reader"`
-	Writer  WriterConfig `mapstructure:"writer"`
-}
-
 type ReaderConfig struct {
 	Topic   string `mapstructure:"topic"`
 	GroupID string `mapstructure:"group_id"`
@@ -19,6 +13,17 @@ type ReaderConfig struct {
 
 type WriterConfig struct {
 	Topic string `mapstructure:"topic"`
+}
+
+type UsecaseConfig struct {
+	Reader *ReaderConfig `mapstructure:"reader"`
+	Writer *WriterConfig `mapstructure:"writer"`
+}
+
+type KafkaConfig struct {
+	Brokers       []string      `mapstructure:"brokers"`
+	EdgeGenerator UsecaseConfig `mapstructure:"edge_generator"`
+	Estimator     UsecaseConfig `mapstructure:"estimator"`
 }
 
 type OTXConfig struct {

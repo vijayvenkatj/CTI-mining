@@ -22,13 +22,21 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	reader, err := commons.NewKafkaReader(ctx, cfg.Kafka.Brokers, cfg.Kafka.Reader.Topic, cfg.Kafka.Reader.GroupID)
+	rc := cfg.Kafka.EdgeGenerator.Reader
+	if rc == nil {
+		log.Fatal("kafka.edge_generator.reader is not configured")
+	}
+	reader, err := commons.NewKafkaReader(ctx, cfg.Kafka.Brokers, rc.Topic, rc.GroupID)
 	if err != nil {
 		log.Fatalf("kafka reader: %v", err)
 	}
 	defer reader.Close()
 
-	writer, err := commons.NewKafkaWriter(ctx, cfg.Kafka.Brokers, cfg.Kafka.Writer.Topic)
+	wc := cfg.Kafka.EdgeGenerator.Writer
+	if wc == nil {
+		log.Fatal("kafka.edge_generator.writer is not configured")
+	}
+	writer, err := commons.NewKafkaWriter(ctx, cfg.Kafka.Brokers, wc.Topic)
 	if err != nil {
 		log.Fatalf("kafka writer: %v", err)
 	}
