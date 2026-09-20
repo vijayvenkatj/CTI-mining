@@ -15,6 +15,8 @@ import (
 
 const otxTimeLayout = "2006-01-02T15:04:05.999999"
 
+const modifiedSinceStateKey = "otx_modified_since"
+
 type OTXResponse struct {
 	Results  []resources.Pulse `json:"results"`
 	Count    int               `json:"count"`
@@ -24,6 +26,11 @@ type OTXResponse struct {
 
 type PulseStore interface {
 	SavePulse(ctx context.Context, pulse resources.Pulse) error
+}
+
+type StateStore interface {
+	SaveIngestionState(ctx context.Context, key, value string) error
+	LoadIngestionState(ctx context.Context, key string) (string, bool, error)
 }
 
 type Poller struct {
@@ -36,6 +43,7 @@ type Poller struct {
 	Client    *Client
 	Publisher *commons.KafkaWriter
 	Store     PulseStore
+	State     StateStore
 }
 
 func NewPoller(baseURL string, modifiedSince time.Time, initialBackoff, maxBackoff time.Duration, client *Client, publisher *commons.KafkaWriter) *Poller {
@@ -50,6 +58,16 @@ func NewPoller(baseURL string, modifiedSince time.Time, initialBackoff, maxBacko
 }
 
 func (p *Poller) Run(ctx context.Context) {
+	if p.State != nil {
+		if value, ok, err := p.State.LoadIngestionState(ctx, modifiedSinceStateKey); err != nil {
+			log.Println("error loading ingestion state", err)
+		} else if ok {
+			if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+				p.ModifiedSince = parsed
+			}
+		}
+	}
+
 	delay := p.InitialBackoff
 
 	for {
@@ -117,6 +135,13 @@ func (p *Poller) Poll(ctx context.Context) error {
 			if p.Store != nil {
 				if storeErr := p.Store.SavePulse(ctx, result); storeErr != nil {
 					log.Println("error storing pulse", result.ID, storeErr)
+				}
+			}
+
+			if p.State != nil {
+				value := p.ModifiedSince.UTC().Format(time.RFC3339)
+				if stateErr := p.State.SaveIngestionState(ctx, modifiedSinceStateKey, value); stateErr != nil {
+					log.Println("error saving ingestion state", stateErr)
 				}
 			}
 		}

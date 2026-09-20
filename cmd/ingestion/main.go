@@ -48,6 +48,7 @@ func main() {
 		}
 		defer pg.Close()
 		poller.Store = pg
+		poller.State = pg
 	}
 
 	poller.Run(ctx)

@@ -75,3 +75,31 @@ func (p *Postgres) SaveEdge(ctx context.Context, edge resources.Edge) error {
 		ExecContext(ctx)
 	return err
 }
+
+func (p *Postgres) SaveIngestionState(ctx context.Context, key, value string) error {
+	_, err := p.qb.Insert("ingestion_state").
+		Columns("id", "value").
+		Values(key, value).
+		Suffix("ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, updated_at = now()").
+		RunWith(p.db).
+		ExecContext(ctx)
+	return err
+}
+
+func (p *Postgres) LoadIngestionState(ctx context.Context, key string) (string, bool, error) {
+	var value string
+	err := p.qb.Select("value").
+		From("ingestion_state").
+		Where(sq.Eq{"id": key}).
+		RunWith(p.db).
+		QueryRowContext(ctx).
+		Scan(&value)
+
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return value, true, nil
+}
