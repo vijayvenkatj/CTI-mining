@@ -19,5 +19,8 @@
   },
   "otx": {
     "api_key": "your-otx-api-key"
+  },
+  "postgres": {
+    "dsn": "postgres://cti:cti@localhost:5433/ctiminer?sslmode=disable"
   }
 }

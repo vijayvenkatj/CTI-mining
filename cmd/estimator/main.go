@@ -10,6 +10,7 @@ import (
 	"github.com/vijayvenkatj/cti-miner/pkg/commons"
 	"github.com/vijayvenkatj/cti-miner/pkg/config"
 	"github.com/vijayvenkatj/cti-miner/pkg/estimator"
+	"github.com/vijayvenkatj/cti-miner/pkg/storage"
 )
 
 func main() {
@@ -34,6 +35,15 @@ func main() {
 	triest := algorithms.NewTreist(10)
 
 	est := estimator.NewEstimator(triest, reader)
+
+	if cfg.Postgres != nil {
+		pg, err := storage.NewPostgres(cfg.Postgres.DSN)
+		if err != nil {
+			log.Fatalf("postgres: %v", err)
+		}
+		defer pg.Close()
+		est.Store = pg
+	}
 
 	if err := est.Run(ctx); err != nil {
 		log.Fatalf("run estimator: %v", err)

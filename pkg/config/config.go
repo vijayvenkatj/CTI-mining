@@ -26,6 +26,10 @@ type KafkaConfig struct {
 	Estimator     UsecaseConfig `mapstructure:"estimator"`
 }
 
+type PostgresConfig struct {
+	DSN string `mapstructure:"dsn"`
+}
+
 type OTXConfig struct {
 	APIKey        string `mapstructure:"api_key"`
 	BaseURL       string `mapstructure:"base_url"`
@@ -36,8 +40,9 @@ type OTXConfig struct {
 }
 
 type Config struct {
-	Kafka KafkaConfig `mapstructure:"kafka"`
-	OTX   OTXConfig   `mapstructure:"otx"`
+	Kafka    KafkaConfig     `mapstructure:"kafka"`
+	OTX      OTXConfig       `mapstructure:"otx"`
+	Postgres *PostgresConfig `mapstructure:"postgres"`
 }
 
 func Load(path string) (*Config, error) {

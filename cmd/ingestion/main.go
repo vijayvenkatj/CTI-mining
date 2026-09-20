@@ -11,6 +11,7 @@ import (
 	"github.com/vijayvenkatj/cti-miner/pkg/commons"
 	"github.com/vijayvenkatj/cti-miner/pkg/config"
 	"github.com/vijayvenkatj/cti-miner/pkg/otx"
+	"github.com/vijayvenkatj/cti-miner/pkg/storage"
 )
 
 func main() {
@@ -39,6 +40,16 @@ func main() {
 
 	client := otx.NewClient(cfg.OTX.APIKey, commons.NewHTTPClient(http.DefaultClient))
 	poller := otx.NewPoller(cfg.OTX.BaseURL, modifiedSince, cfg.OTX.InitialBackoff, cfg.OTX.MaxBackoff, client, writer)
+
+	if cfg.Postgres != nil {
+		pg, err := storage.NewPostgres(cfg.Postgres.DSN)
+		if err != nil {
+			log.Fatalf("postgres: %v", err)
+		}
+		defer pg.Close()
+		poller.Store = pg
+		poller.State = pg
+	}
 
 	poller.Run(ctx)
 }

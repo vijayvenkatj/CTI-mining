@@ -10,9 +10,14 @@ import (
 	"github.com/vijayvenkatj/cti-miner/pkg/resources"
 )
 
+type EdgeStore interface {
+	SaveEdge(ctx context.Context, edge resources.Edge) error
+}
+
 type Estimator struct {
 	Triest *algorithms.Triest
 	Reader *commons.KafkaReader
+	Store  EdgeStore
 }
 
 func NewEstimator(triest *algorithms.Triest, reader *commons.KafkaReader) *Estimator {
@@ -36,5 +41,11 @@ func (e *Estimator) Run(ctx context.Context) error {
 
 		e.Triest.Insert(edge)
 		log.Println("triangles:", e.Triest.Estimate())
+
+		if e.Store != nil {
+			if err := e.Store.SaveEdge(ctx, edge); err != nil {
+				log.Println("error storing edge", edge.String(), err)
+			}
+		}
 	}
 }
