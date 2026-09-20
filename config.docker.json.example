@@ -1,0 +1,29 @@
+{
+  "kafka": {
+    "brokers": ["kafka:29092"],
+    "edge_generator": {
+      "reader": {
+        "topic": "cti-pulses",
+        "group_id": "cti-miner"
+      },
+      "writer": {
+        "topic": "cti-edges"
+      }
+    },
+    "estimator": {
+      "reader": {
+        "topic": "cti-edges",
+        "group_id": "cti-miner-estimator"
+      }
+    }
+  },
+  "otx": {
+    "api_key": "your-otx-api-key"
+  },
+  "postgres": {
+    "dsn": "postgres://cti:cti@postgres:5432/ctiminer?sslmode=disable"
+  },
+  "server": {
+    "addr": ":8080"
+  }
+}

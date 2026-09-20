@@ -3,8 +3,9 @@
 *.exe
 *.test
 
-# Local config (see config.json.example)
+# Local config (see config.json.example / config.docker.json.example)
 config.json
+config.docker.json
 
 # Editor/OS
 .DS_Store
