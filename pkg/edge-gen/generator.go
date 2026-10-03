@@ -32,6 +32,14 @@ func NewEdgeGenerator(bloom *algorithms.BloomFilter, cms *algorithms.CountMinSke
 }
 
 func (eg *EdgeGenerator) GenerateEdges(ctx context.Context) error {
+	publish := func(edge resources.Edge) error {
+		value, err := json.Marshal(edge)
+		if err != nil {
+			return err
+		}
+		return eg.Writer.WriteMessage(ctx, []byte(edge.String()), value)
+	}
+
 	for {
 		msg, err := eg.Reader.ReadMessage(ctx)
 		if err != nil {
@@ -43,38 +51,45 @@ func (eg *EdgeGenerator) GenerateEdges(ctx context.Context) error {
 			continue
 		}
 
-		for _, indicator := range pulse.Indicators {
-			key := indicator.Indicator
-			eg.CMS.Insert(key)
+		if err := eg.ProcessPulse(pulse, publish); err != nil {
+			return err
+		}
+	}
+}
 
-			// Check for very common indicators using CMS for freq
-			if freq := eg.CMS.Estimate(key); freq >= eg.Threshold {
-				eg.IndicatorIndex.Set(pulse.ID, key)
+// ProcessPulse runs the CMS filter + indicator correlation for one pulse and
+// calls emit for every new pulse-pulse edge. With a nil Bloom, dedup is
+// skipped and every candidate edge is emitted (used by cmd/eval).
+func (eg *EdgeGenerator) ProcessPulse(pulse resources.Pulse, emit func(resources.Edge) error) error {
+	for _, indicator := range pulse.Indicators {
+		key := indicator.Indicator
+		eg.CMS.Insert(key)
+
+		// Very common indicators make many weak edges: stop correlating on
+		// them and free the pulse set they accumulated so far.
+		if freq := eg.CMS.Estimate(key); freq >= eg.Threshold {
+			eg.IndicatorIndex.Delete(key)
+			continue
+		}
+
+		for _, target := range eg.IndicatorIndex.Get(key) {
+			if target == pulse.ID {
 				continue
 			}
 
-			// Unique pulses -> make edges -> publish unique to writer
-			pulses := eg.IndicatorIndex.Get(key)
-			for _, target := range pulses {
-				if target == pulse.ID {
-					continue
-				}
-
-				edge := resources.MakeEdge(pulse.ID, target)
+			edge := resources.MakeEdge(pulse.ID, target)
+			if eg.Bloom != nil {
 				if eg.Bloom.Contains(edge.String()) {
 					continue
 				}
 				eg.Bloom.Insert(edge.String())
-
-				value, err := json.Marshal(edge)
-				if err != nil {
-					return err
-				}
-				if err := eg.Writer.WriteMessage(ctx, []byte(edge.String()), value); err != nil {
-					return err
-				}
 			}
-			eg.IndicatorIndex.Set(pulse.ID, key)
+
+			if err := emit(edge); err != nil {
+				return err
+			}
 		}
+		eg.IndicatorIndex.Set(pulse.ID, key)
 	}
+	return nil
 }

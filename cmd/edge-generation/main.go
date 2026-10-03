@@ -42,7 +42,8 @@ func main() {
 	}
 	defer writer.Close()
 
-	bloom := algorithms.NewBloomFilter(1<<16, 4)
+	// 2^24 bits (2 MB): ~0.2% false positives at ~1M edges; 2^16 dropped >90% of edges (eval/results/bloom.csv).
+	bloom := algorithms.NewBloomFilter(1<<24, 4)
 	cms := algorithms.NewCMS(4, 1<<10)
 	index := &resources.IndicatorIndex{}
 

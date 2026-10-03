@@ -54,3 +54,21 @@ func (index *IndicatorIndex) Get(indicatorID string) []string {
 
 	return slices.Sorted(maps.Keys(pulseMap))
 }
+
+// Delete drops an indicator's pulse set (used once it is deemed too common to correlate on).
+func (index *IndicatorIndex) Delete(indicatorID string) {
+	index.mu.Lock()
+	defer index.mu.Unlock()
+	delete(index.m, indicatorID)
+}
+
+// Entries returns the total number of (indicator, pulse) pairs held.
+func (index *IndicatorIndex) Entries() int {
+	index.mu.RLock()
+	defer index.mu.RUnlock()
+	n := 0
+	for _, pulses := range index.m {
+		n += len(pulses)
+	}
+	return n
+}

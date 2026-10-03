@@ -11,3 +11,7 @@ config.docker.json
 .DS_Store
 .idea/
 .vscode/
+
+# Evaluation dataset and outputs
+eval/data/*.jsonl
+eval/results/

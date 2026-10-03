@@ -13,10 +13,19 @@ type Triest struct {
 
 	Edges  []resources.Edge
 	AdjMap map[string]map[string]struct{}
+
+	rng *rand.Rand
 }
 
 func NewTreist(m int) *Triest {
+	return NewTriestWithSeed(m, rand.Uint64())
+}
+
+// NewTriestWithSeed makes the reservoir sampling reproducible (used by cmd/eval).
+func NewTriestWithSeed(m int, seed uint64) *Triest {
 	return &Triest{
+		rng: rand.New(rand.NewPCG(seed, seed)),
+
 		T:   0,
 		M:   m,
 		tau: 0,
@@ -36,11 +45,11 @@ func (t *Triest) Insert(e resources.Edge) {
 	}
 
 	// There is M/T chance of an edge being selected
-	if rand.Float64() >= float64(t.M)/float64(t.T) {
+	if t.rng.Float64() >= float64(t.M)/float64(t.T) {
 		return
 	}
 
-	idx := rand.IntN(len(t.Edges))
+	idx := t.rng.IntN(len(t.Edges))
 	removed := t.Edges[idx]
 
 	t.tau -= t.triangles(removed)

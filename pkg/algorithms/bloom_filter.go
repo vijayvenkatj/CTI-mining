@@ -1,40 +1,34 @@
 package algorithms
 
-import "hash/fnv"
-
 type BloomFilter struct {
 	N    uint64
 	K    uint64
-	Bits []bool
+	Bits []uint64 // bitset: N bits packed into N/64 words
 }
 
 func NewBloomFilter(nBits, nHashes uint64) *BloomFilter {
 	return &BloomFilter{
 		N:    nBits,
 		K:    nHashes,
-		Bits: make([]bool, nBits),
+		Bits: make([]uint64, (nBits+63)/64),
 	}
 }
 
-func (b *BloomFilter) hash(item string, seed uint64) uint64 {
-	h := fnv.New64a()
-	h.Write([]byte(item))
-	return h.Sum64() ^ seed
-}
-
 func (b *BloomFilter) Insert(data string) {
+	h1, h2 := hashPair(data)
 	var i uint64
 	for i = 0; i < b.K; i++ {
-		hash := b.hash(data, i) % b.N
-		b.Bits[hash] = true
+		hash := (h1 + i*h2) % b.N
+		b.Bits[hash/64] |= 1 << (hash % 64)
 	}
 }
 
 func (b *BloomFilter) Contains(data string) bool {
+	h1, h2 := hashPair(data)
 	var i uint64
 	for i = 0; i < b.K; i++ {
-		hash := b.hash(data, i) % b.N
-		if !b.Bits[hash] {
+		hash := (h1 + i*h2) % b.N
+		if b.Bits[hash/64]&(1<<(hash%64)) == 0 {
 			return false
 		}
 	}
